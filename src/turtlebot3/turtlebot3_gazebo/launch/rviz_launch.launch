@@ -1,0 +1,4 @@
+<launch>
+  <!--RVIZ-->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d /home/efe/Documents/udacity_ros/workspaces/ekf_ws/src/EKFLab.rviz"/>
+</launch>

@@ -1,0 +1,147 @@
+<launch>
+
+  <!-- Arguments -->
+  <arg name="model" default="$(env TURTLEBOT3_MODEL)" doc="model type [burger, waffle, waffle_pi]"/>
+  <arg name="map_file" default="$(find turtlebot3_navigation)/maps/map.yaml"/>
+  <arg name="open_rviz" default="true"/>
+    <arg name="cmd_vel_topic" default="/cmd_vel" />
+  <arg name="odom_topic" default="odom" />
+  <arg name="move_forward_only" default="false"/>
+  <arg name="x_pos" default="-1.0"/>
+  <arg name="y_pos" default="-2.0"/>
+  <arg name="z_pos" default="0.0"/>
+  <arg name="initial_pose_a"  default="0.0"/>
+  
+  
+  <!-- The path_ekf_plotter node -->	
+  <node name="path_ekf_plotter" type="path_ekf_plotter.py" pkg="odom_to_trajectory">
+  </node>
+  
+  <!-- The path_odom_plotter node -->
+  <node name="path_odom_plotter" type="path_odom_plotter.py" pkg="odom_to_trajectory">
+  </node>
+
+    <!-- Map server -->
+  <node pkg="map_server" name="map_server" type="map_server" args="$(arg map_file)"/>
+
+  <!-- AMCL -->
+  <node name="amcl" pkg="amcl" type="amcl" output="screen">
+    <param name="odom_frame_id" value="odom"/>
+    <param name="odom_model_type" value="diff-corrected"/>
+    <param name="base_frame_id" value="base_footprint"/>
+    <param name="global_frame_id" value="/map"/>
+    <param name="use_map_topic"   value="/map"/>
+    <param name="gui_publish_rate"          value="10.0"/>
+    <param name="save_pose_rate"            value="0.5"/>
+    <param name="laser_max_beams"           value="50"/>
+    <param name="laser_min_range"           value="-1.0"/>
+    <param name="laser_max_range"           value="-1.0"/>
+    <param name="min_particles"             value="500"/>
+    <param name="max_particles"             value="1000"/>
+    <param name="kld_err"                   value="0.05"/>
+    <param name="kld_z"                     value="0.99"/>
+    <param name="odom_alpha1"               value="0.02"/>
+    <param name="odom_alpha2"               value="0.01"/>
+    <param name="odom_alpha3"               value="0.01"/>
+    <param name="odom_alpha4"               value="0.02"/>
+    <param name="laser_z_hit"               value="1.0"/>
+    <param name="laser_z_short"             value="0.05"/>
+    <param name="laser_z_max"               value="0.05"/>
+    <param name="laser_z_rand"              value="1.0"/>
+    <param name="laser_sigma_hit"           value="0.2"/>
+    <param name="laser_lambda_short"        value="0.1"/>
+    <param name="laser_model_type"          value="likelihood_field"/>
+    <param name="laser_likelihood_max_dist" value="3.5"/>
+    <param name="update_min_d"              value="0.2"/>
+    <param name="update_min_a"              value="0.2"/>
+    <param name="resample_interval"         value="1"/>
+    <param name="transform_tolerance"       value="0.2"/>
+    <param name="recovery_alpha_slow"       value="0.0"/>
+    <param name="recovery_alpha_fast"       value="0.0"/>
+    <param name="initial_pose_x"            value="$(arg z_pos)"/>
+    <param name="initial_pose_y"            value="$(arg y_pos)"/>
+    <param name="initial_pose_a"            value="$(arg initial_pose_a)"/>
+    <remap from="scan"                      to="/scan"/>
+    <remap from="map"                       to="/map"/>
+    <remap from="static_map"                to="/static_map"/>
+  </node>
+
+  <!-- move_base -->
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />
+    <rosparam file="$(find turtlebot3_navigation)/param/costmap_common_params_$(arg model).yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find turtlebot3_navigation)/param/costmap_common_params_$(arg model).yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find turtlebot3_navigation)/param/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find turtlebot3_navigation)/param/global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find turtlebot3_navigation)/param/move_base_params.yaml" command="load" />
+    <rosparam file="$(find turtlebot3_navigation)/param/dwa_local_planner_params_$(arg model).yaml" command="load" />
+    <remap from="cmd_vel" to="$(arg cmd_vel_topic)"/>
+    <remap from="odom" to="$(arg odom_topic)"/>
+    <param name="DWAPlannerROS/min_vel_x" value="0.0" if="$(arg move_forward_only)" />
+  </node>
+
+  <!--
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <param name="base_global_planner" value="navfn/NavfnROS" />
+    <param name="base_local_planner" value="base_local_planner/TrajectoryPlannerROS"/>
+    <rosparam file="$(find turtlebot3_navigation)/param/udacity_costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find turtlebot3_navigation)/param/udacity_costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find turtlebot3_navigation)/param/udacity_local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find turtlebot3_navigation)/param/udacity_global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find turtlebot3_navigation)/param/udacity_base_local_planner_params.yaml" command="load" />
+  </node>
+  -->
+
+  <!-- The robot_pose_ekf node -->
+  <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
+    <param name="output_frame" value="odom_combined"/>
+    <param name="base_footprint_frame" value="base_footprint"/>
+    <param name="freq" value="30.0"/>
+    <param name="sensor_timeout" value="1.0"/>  
+    <param name="odom_used" value="true"/>
+    <param name="imu_used" value="true"/>
+    <param name="vo_used" value="false"/>
+    <remap from="imu_data" to="/mobile_base/sensors/imu_data" />	
+  </node>
+
+  <!--Turtlebot Teleop-->
+  <node pkg="turtlebot3_teleop" type="turtlebot3_teleop_key" name="turtlebot3_teleop_keyboard"  output="screen">
+    <param name="scale_linear" value="0.5" type="double"/>
+    <param name="scale_angular" value="1.5" type="double"/>
+    <remap from="turtlebot3_teleop_keyboard/cmd_vel" to="cmd_vel_mux/input/teleop"/>
+  </node>
+
+  <!-- TurleBot Gazebo-->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find turtlebot3_gazebo)/worlds/turtlebot3_world.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"> <param name="use_gui" value="TRUE" /> </node>
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+  
+  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
+
+  <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf" args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
+
+  <!-- "camera" should uniquely identify the device. All topics are pushed down
+       into the "camera" namespace, and it is prepended to tf frame ids. -->
+  <arg name="camera"      default="camera"/>
+  <arg name="publish_tf"  default="false"/>
+  <!-- Factory-calibrated depth registration -->
+  <arg name="depth_registration"              default="true"/>
+  <arg     if="$(arg depth_registration)" name="depth" value="depth_registered" />
+  <arg unless="$(arg depth_registration)" name="depth" value="depth" />  
+
+  <!--RVIZ-->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d /home/efe/Documents/udacity_ros/workspaces/ekf_ws/src/EKFLab.rviz"/>
+  <!--Use this insted if you are cloning the whole repo in your src-->
+  <!--<node pkg="rviz" type="rviz" name="rviz" args="-d /home/workspace/catkin_ws/src/RoboND-EKFLab/EKFLab.rviz"/>-->
+  <!-- LAUNCH INTERFACE -->
+<arg name="camera_name" default="camera_frame"/>
+
+</launch>
